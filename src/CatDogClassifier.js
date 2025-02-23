@@ -41,17 +41,15 @@ const CatDogClassifier = () => {
     };
 
     // Convert image data into a tensor for ONNX
-    const preprocessImage = (imageData) => {
-        let floatArray = new Float32Array(3 * 32 * 32);
+    const preprocessImage = async (imageElement) => {
+    const tensor = tf.browser.fromPixels(imageElement)
+        .resizeNearestNeighbor([224, 224]) // Resize to model input size
+        .toFloat()
+        .div(tf.scalar(255.0)) // Normalize
+        .expandDims(); // Add batch dimension
+    return tensor;
+};
 
-        for (let i = 0; i < 32 * 32; i++) {
-            floatArray[i] = imageData[i * 4] / 255.0;       // Red
-            floatArray[i + 1024] = imageData[i * 4 + 1] / 255.0; // Green
-            floatArray[i + 2048] = imageData[i * 4 + 2] / 255.0; // Blue
-        }
-
-        return new ort.Tensor("float32", floatArray, [1, 3, 32, 32]);
-    };
 
     // Run ONNX inference
     const classifyImage = async () => {
