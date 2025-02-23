@@ -3,9 +3,10 @@ import * as ort from "onnxruntime-web";
 
 const CatDogClassifier = () => {
     const [result, setResult] = useState(null);
+    const [facingMode, setFacingMode] = useState("user"); // 'user' = front, 'environment' = back
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
-    const sessionRef = useRef(null); // Fix: Store ONNX session in a ref
+    const sessionRef = useRef(null);
 
     // Load the ONNX model
     useEffect(() => {
@@ -21,17 +22,25 @@ const CatDogClassifier = () => {
     }, []);
 
     // Start Webcam
+    const startCamera = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode }, // Use state for front/back camera
+            });
+            videoRef.current.srcObject = stream;
+        } catch (error) {
+            console.error("❌ Error accessing webcam:", error);
+        }
+    };
+
     useEffect(() => {
-        const startCamera = async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                videoRef.current.srcObject = stream;
-            } catch (error) {
-                console.error("❌ Error accessing webcam:", error);
-            }
-        };
         startCamera();
-    }, []);
+    }, [facingMode]); // Restart camera when facingMode changes
+
+    // Toggle between front and back cameras
+    const toggleCamera = () => {
+        setFacingMode((prev) => (prev === "user" ? "environment" : "user"));
+    };
 
     // Capture image from webcam
     const captureImage = () => {
@@ -53,9 +62,9 @@ const CatDogClassifier = () => {
         let floatArray = new Float32Array(3 * 32 * 32);
 
         for (let i = 0; i < 32 * 32; i++) {
-            floatArray[i] = imageData[i * 4] / 255.0;       // Red
-            floatArray[i + 1024] = imageData[i * 4 + 1] / 255.0; // Green
-            floatArray[i + 2048] = imageData[i * 4 + 2] / 255.0; // Blue
+            floatArray[i] = imageData[i * 4] / 255.0;
+            floatArray[i + 1024] = imageData[i * 4 + 1] / 255.0;
+            floatArray[i + 2048] = imageData[i * 4 + 2] / 255.0;
         }
 
         return new ort.Tensor("float32", floatArray, [1, 3, 32, 32]);
@@ -81,7 +90,6 @@ const CatDogClassifier = () => {
 
             console.log("🐶🐱 Model Predictions:", probabilities);
 
-            // Ensure the output is valid
             if (probabilities[0] > 0.9 || probabilities[1] > 0.9) {
                 setResult(probabilities[0] > probabilities[1] ? "It's a Cat! 🐱" : "It's a Dog! 🐶");
             } else {
@@ -99,6 +107,7 @@ const CatDogClassifier = () => {
             <canvas ref={canvasRef} style={{ display: "none" }}></canvas>
             <br />
             <button onClick={classifyImage}>Capture & Predict</button>
+            <button onClick={toggleCamera}>Flip Camera</button>
             {result && <h2>{result}</h2>}
         </div>
     );
