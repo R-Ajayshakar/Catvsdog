@@ -3,10 +3,11 @@ import * as ort from "onnxruntime-web";
 
 const CatDogClassifier = () => {
     const [result, setResult] = useState(null);
-    const [facingMode, setFacingMode] = useState("user"); // 'user' = front, 'environment' = back
+    const [facingMode, setFacingMode] = useState("user"); // "user" = front, "environment" = back
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
     const sessionRef = useRef(null);
+    let streamRef = useRef(null); // Store the current stream
 
     // Load the ONNX model
     useEffect(() => {
@@ -24,9 +25,18 @@ const CatDogClassifier = () => {
     // Start Webcam
     const startCamera = async () => {
         try {
+            // Stop the previous stream if it exists
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach((track) => track.stop());
+            }
+
+            // Start a new camera stream with the selected facing mode
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode }, // Use state for front/back camera
+                video: { facingMode },
             });
+
+            // Set the new stream
+            streamRef.current = stream;
             videoRef.current.srcObject = stream;
         } catch (error) {
             console.error("❌ Error accessing webcam:", error);
